@@ -26,6 +26,12 @@ class EV3Cmds():
                     self._DIRECT_COMMAND_REPLY,
                     self.localMem * 1024 + self.globalMem) + self.cmds
 
+    def send(self, writable):
+        """
+        Write this command sequence to a given file handle
+        """
+        writable.write(self.encode())
+
     def op(self,op):
         """
         Start a builder that packs arguments for a given operation
