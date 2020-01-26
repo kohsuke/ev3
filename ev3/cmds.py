@@ -1,5 +1,6 @@
 import struct
 from .sound import Sound
+from .ui import UI
 
 class EV3Cmds():
     """
@@ -15,6 +16,7 @@ class EV3Cmds():
         self.localMem = 0           # local variables used
         self.globalMem = 0          # global variables used
         self.sound = Sound(self)
+        self.ui = UI(self)
 
     def encode(self) -> bytes:
         """
