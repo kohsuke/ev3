@@ -1,8 +1,10 @@
 import struct
 from .sound import Sound
 from .ui import UI
+from .output import Output
 
-class EV3Cmds():
+
+class EV3Cmds:
     """
     Represents a sequence of commands that expose
     low-level EV3 capability building blocks.
@@ -17,6 +19,7 @@ class EV3Cmds():
         self.globalMem = 0          # global variables used
         self.sound = Sound(self)
         self.ui = UI(self)
+        self.output = Output(self)
 
     def encode(self) -> bytes:
         """
@@ -34,7 +37,7 @@ class EV3Cmds():
         """
         writable.write(self.encode())
 
-    def op(self,op):
+    def op(self, op):
         """
         Start a builder that packs arguments for a given operation
         """
@@ -43,8 +46,8 @@ class EV3Cmds():
     _DIRECT_COMMAND_REPLY       = 0x00
     _DIRECT_COMMAND_NO_REPLY    = 0x80
 
-    class Builder():
-        def __init__(self,cmds):
+    class Builder:
+        def __init__(self, cmds):
             self.cmds = cmds
 
         def bytes(self, bytes):
@@ -54,32 +57,32 @@ class EV3Cmds():
             self.cmds += bytes
             return self
 
-        def p(self,*args):
+        def p(self, *args):
             """
             Pack arguments to cmds
             """
             return self.bytes(struct.pack(*args))
 
-        def b(self,v):
+        def b(self, v):
             """
             Pack one byte as-is
             """
-            return self.p('<B', v&0xFF)
+            return self.p('<B', v & 0xFF)
 
-        def c(self,v):
+        def c(self, v):
             """
             Encode a constant into a variable length byte sequence
             """
-            if -32<=v and v<32:
-                return self.p('<b', v&0x1F)       # 6 bits
-            if -128<=v and v<128:
+            if -32 <= v < 32:
+                return self.p('<b', v & 0x1F)       # 6 bits
+            if -128 <= v < 128:
                 return self.p('<Bb', 0x81, v)     # 8 bits
-            if -32768<=v and v<32768:
+            if -32768 <= v < 32768:
                 return self.p('<Bh', 0x82, v)     # 16 bits
             else:
                 return self.p('<Bi', 0x83, v)     # 32 bits
 
-        def s(self,s):
+        def s(self, s):
             """
             Encode a string
             """
