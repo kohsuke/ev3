@@ -74,7 +74,7 @@ class EV3Cmds:
             Encode a constant into a variable length byte sequence
             """
             if -32 <= v < 32:
-                return self.p('<b', v & 0x1F)       # 6 bits
+                return self.p('<b', v & 0x3F)       # 6 bits
             if -128 <= v < 128:
                 return self.p('<Bb', 0x81, v)     # 8 bits
             if -32768 <= v < 32768:

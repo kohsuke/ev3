@@ -68,3 +68,42 @@ class Output:
         """
         self.__head(0xA6, ports, layer)
         return self
+
+    def polarity(self, polarity: int, ports: int = None, layer: int = None):
+        """
+        Start the motors
+        """
+        self.__head(0xA7, ports, layer).c(polarity)
+        return self
+
+    def ready(self, ports: int = None, layer: int = None):
+        """
+        Wait until motors get idle
+        """
+        self.__head(0xAA, ports, layer)
+        return self
+
+    def move_by_step(self, step1:int, step2:int, step3:int, power: int = None, speed: int = None, brake: bool = False, ports: int = None, layer: int = None):
+        """
+        ramp up, sustain, and ramp down, counted in tacho counts, and given in power or speed
+
+        power/speed [-100,100]
+        """
+        self.__move(0xAC, 0xAE, step1, step2, step3, power, speed, brake, ports, layer)
+
+    def move_by_time(self, step1:int, step2:int, step3:int, power: int = None, speed: int = None, brake: bool = False, ports: int = None, layer: int = None):
+        """
+        ramp up, sustain, and ramp down, counted in milliseconds, and given in power or speed
+
+        power/speed [-100,100]
+        """
+        self.__move(0xAD, 0xAF, step1, step2, step3, power, speed, brake, ports, layer)
+
+    def __move(self, powerOpCode:int, speedOpCode:int, step1:int, step2:int, step3:int, power: int = None, speed: int = None, brake: bool = False, ports: int = None, layer: int = None):
+        if speed != None and power != None:
+            raise Exception("speed and power are mutually exclusive")
+        level = speed if speed else power
+        if level == None:
+            raise Exception("speed or power must be specified")
+
+        self.__head(powerOpCode if power else speedOpCode, ports, layer).c(level).c(step1).c(step2).c(step3).c(1 if brake else 0)
