@@ -1,11 +1,9 @@
-from .op import Op
-
-class Sound(Op):
+class Sound():
     """
     Sound operations
     """
     def __init__(self,cmds):
-        super().__init__(cmds, 0x94)
+        self.cmds = cmds
 
     def tone(self, volume:int, frequency:int, duration:int):
         """
@@ -15,7 +13,7 @@ class Sound(Op):
         frequency: Hz (250-10000)
         duration: milliseconds or 0, which is forever
         """
-        self.cmd(0x01).c(volume).c(frequency).c(duration)
+        self.cmds.op(0x04).b(0x01).c(volume).c(frequency).c(duration)
         return self
 
     def play(self, volume:int, name:str):
@@ -25,11 +23,11 @@ class Sound(Op):
         volume: percent (0-100)
         name: sound file name
         """
-        self.cmd(0x02).c(volume).s(name)
+        self.cmds.op(0x02).b(0x02).c(volume).s(name)
         return self
 
     def ready(self):
         """
         block until sound finishes playing
         """
-        self.cmd(0x96)
+        self.cmds.op(0x96)

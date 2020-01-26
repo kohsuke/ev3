@@ -26,11 +26,11 @@ class EV3Cmds():
                     self._DIRECT_COMMAND_REPLY,
                     self.localMem * 1024 + self.globalMem) + self.cmds
 
-    def cmd(self,op,cmd):
+    def op(self,op):
         """
-        Start a builder that packs arguments for the given command
+        Start a builder that packs arguments for a given operation
         """
-        return self.Builder(self.cmds).b(op).b(cmd)
+        return self.Builder(self.cmds).b(op)
 
     _DIRECT_COMMAND_REPLY       = 0x00
     _DIRECT_COMMAND_NO_REPLY    = 0x80
