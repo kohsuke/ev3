@@ -4,7 +4,7 @@ from .ui import UI
 from .output import Output
 
 
-class EV3Cmds:
+class Program:
     """
     Represents a sequence of commands that expose
     low-level EV3 capability building blocks.

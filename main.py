@@ -1,10 +1,10 @@
-from ev3 import EV3Cmds
+from ev3 import Program
 from gear import Gear
 import binascii
 
 import hid
 with hid.Device(0x0694,5) as h:
-    c = EV3Cmds()
+    c = Program()
     c.sound.tone(volume=1, frequency=440, duration=100)
     c.sound.ready()
 
