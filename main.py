@@ -1,8 +1,10 @@
 from ev3 import Program
 from gear import Gear
 import binascii
-
+import time
 import hid
+
+
 with hid.Device(0x0694,5) as h:
     c = Program()
     c.sound.tone(volume=1, frequency=440, duration=100)
@@ -27,11 +29,24 @@ with hid.Device(0x0694,5) as h:
 
     c.output.ports(2)
     # c.output.polarity(1)
-    c.output.move_by_step( g(60), g(240), g(60), speed=-20)
-    c.output.ready()
-    c.output.move_by_step( g(60), g(240), g(60), speed= 20)
 
-    print(binascii.hexlify(c.encode()))
+    # move_by_X functions seem to internally reset tacho count
+    # so read is not giving me meaningful tacho count
+    c.output.move_by_step( g(60), g(240), g(60), speed=20)
+    # c.output.ready()
+    # c.output.move_by_step( g(60), g(240), g(60), speed= 20)
+
     c.send(h)
+
+    for i in range(50):
+        c = Program()
+        speed = c.globalVar(1)
+        tacho = c.globalVar(4)
+        c.output.read(1, speed, tacho)
+        # print(binascii.hexlify(c.encode()))
+        c.send(h)
+        print("speed:%d tacho:%d"%(speed(),tacho()))
+        time.sleep(0.1)
+
 
 

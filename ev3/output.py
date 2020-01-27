@@ -7,14 +7,14 @@ class Output:
 
     def __init__(self, cmds):
         self.cmds = cmds
-        self.layer(0)  # use layer 0 by default
-        self.__ports = lambda x: x  # require ports to be specified explicitly
+        self.__layer = 0
+        self.__ports = None
 
     def layer(self, n):
         """
         Control the default layer, which only matters for daisy chaining
         """
-        self.__layer = lambda o: o if o else n
+        self.__layer = n
         return self
 
     def ports(self, n):
@@ -23,11 +23,17 @@ class Output:
 
         n: bit fields of size 4
         """
-        self.__ports = lambda o: o if o else n
+        self.__ports = n
         return self
 
     def __head(self,op: int, ports, layer):
-        return self.cmds.op(op).p1(self.__layer(layer)).p1(self.__ports(ports))
+        if ports==None:
+            ports = self.__ports
+            if ports==None:
+                raise Exception("ports is not specified")
+        if layer==None:
+            layer = self.__layer
+        return self.cmds.op(op).p1(layer).p1(ports)
 
 
     def reset(self, ports: int = None, layer: int = None):
@@ -78,11 +84,13 @@ class Output:
         self.__head(0xA7, ports, layer).p1(polarity)
         return self
 
-    def read(self, speed: Variable, tacho: Variable, ports: int = None, layer: int = None):
+    def read(self, port:int, speed: Variable, tacho: Variable, layer: int = None):
         """
         Read the current motor speed and tacho count
+
+        Bware that port is [0,3]
         """
-        self.__head(0xA8, ports, layer).p1(speed).p4(tacho)
+        self.__head(0xA8, port, layer).p1(speed).p4(tacho)
         return self
 
     def ready(self, ports: int = None, layer: int = None):

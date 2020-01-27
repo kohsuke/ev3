@@ -25,19 +25,27 @@ class Program:
 
         self.response = []          # response from the last command sent. used by global variables
 
+    def __align(self, i:int, sz:int):
+        """
+            Pad the length to the multiple of 'sz'
+        """
+        return (i+sz)//sz * sz;
+
     def localVar(self, size:int):
         """
         Allocates a local variable, which can then be used as parameters to commands later
         """
-        v = LocalVariable(self.localMem, size)
+        self.localMem = self.__align(self.localMem, size)
+        v = LocalVariable(self, self.localMem, size)
         self.localMem += size
         return v
 
     def globalVar(self, size:int):
         """
-        Allocates a global variable, which can then be used as parameters to commands later
+        Allocates a global variable, which can then be used as parameters to commands later.
         """
-        v = GlobalVariable(self.globalMem, size)
+        self.globalMem = self.__align(self.globalMem, size)
+        v = GlobalVariable(self, self.globalMem, size)
         self.globalMem += size
         return v
 
@@ -51,13 +59,6 @@ class Program:
                     self._DIRECT_COMMAND_REPLY,
                     self.localMem * 1024 + self.globalMem) + self.cmds
 
-    def __readExactly(self, r, size):
-        "Read exactly 'size' bytes from the stream"
-        bytes = b''
-        while len(bytes)<size:
-            bytes += r.read(size-len(bytes))
-        return bytes
-
     def send(self, writable):
         """
         Write this command sequence to a given file handle
@@ -65,13 +66,13 @@ class Program:
         writable.write(self.encode())
 
         # read response
-        len = struct.unpack('<H',self.__readExactly(writable,2))[0]
-        payload = self.__readExactly(writable,len)
-        seqNum,code=struct.unpack('<Hb',payload[:3])
+        rsp = writable.read(2048)
+        # rspLen = struct.unpack('<H',rsp[:2])[0]
+        seqNum,code=struct.unpack('<Hb',rsp[2:5])
         if code != self._DIRECT_REPLY:
-            raise Exception("Command execution failed")
+            raise Exception("Command execution failed %d"%code)
         # TODO: verify that seqNum checks out
-        self.response = payload[3:]
+        self.response = rsp[5:]
 
     def op(self, op):
         """
