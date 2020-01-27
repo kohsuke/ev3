@@ -23,6 +23,6 @@ class UI():
         else:
             v = (m-1)*3 + c + 1
 
-        self.cmds.op(self.OPUI_WRITE).b(0x1b).c(v)
+        self.cmds.op(self.OPUI_WRITE).b(0x1b).p1(v)
         return self
 

@@ -1,7 +1,9 @@
 import struct
+import io
 from .sound import Sound
 from .ui import UI
 from .output import Output
+from .var import *
 
 
 class Program:
@@ -21,6 +23,24 @@ class Program:
         self.ui = UI(self)
         self.output = Output(self)
 
+        self.response = []          # response from the last command sent. used by global variables
+
+    def localVar(self, size:int):
+        """
+        Allocates a local variable, which can then be used as parameters to commands later
+        """
+        v = LocalVariable(self.localMem, size)
+        self.localMem += size
+        return v
+
+    def globalVar(self, size:int):
+        """
+        Allocates a global variable, which can then be used as parameters to commands later
+        """
+        v = GlobalVariable(self.globalMem, size)
+        self.globalMem += size
+        return v
+
     def encode(self) -> bytes:
         """
         Packs the commands given thus far to a  packet byte array
@@ -31,11 +51,27 @@ class Program:
                     self._DIRECT_COMMAND_REPLY,
                     self.localMem * 1024 + self.globalMem) + self.cmds
 
+    def __readExactly(self, r, size):
+        "Read exactly 'size' bytes from the stream"
+        bytes = b''
+        while len(bytes)<size:
+            bytes += r.read(size-len(bytes))
+        return bytes
+
     def send(self, writable):
         """
         Write this command sequence to a given file handle
         """
         writable.write(self.encode())
+
+        # read response
+        len = struct.unpack('<H',self.__readExactly(writable,2))[0]
+        payload = self.__readExactly(writable,len)
+        seqNum,code=struct.unpack('<Hb',payload[:3])
+        if code != self._DIRECT_REPLY:
+            raise Exception("Command execution failed")
+        # TODO: verify that seqNum checks out
+        self.response = payload[3:]
 
     def op(self, op):
         """
@@ -45,6 +81,9 @@ class Program:
 
     _DIRECT_COMMAND_REPLY       = 0x00
     _DIRECT_COMMAND_NO_REPLY    = 0x80
+
+    _DIRECT_REPLY               = 0x02
+    _DIRECT_REPLY_ERROR         = 0x04
 
     class Builder:
         def __init__(self, cmds):
@@ -57,9 +96,9 @@ class Program:
             self.cmds += bytes
             return self
 
-        def p(self, *args):
+        def f(self, *args):
             """
-            Pack arguments to cmds
+            Format & pack arguments to cmds
             """
             return self.bytes(struct.pack(*args))
 
@@ -67,20 +106,44 @@ class Program:
             """
             Pack one byte as-is
             """
-            return self.p('<B', v & 0xFF)
+            return self.f('<B', v & 0xFF)
 
-        def c(self, v):
+        def p1(self, v):
+            return self.p(v,1)
+
+        def p2(self, v):
+            return self.p(v,2)
+
+        def p4(self, v):
+            return self.p(v,4)
+
+        def c(self):
+            pass
+
+        def p(self, v, size: int):
             """
-            Encode a constant into a variable length byte sequence
+            Encode a parameter into a variable length byte sequence
+
+            size: size of the parameter in bytes, to verify that the variables given is consistent in size
             """
+            flag = 0    # literal
+            if isinstance(v,Variable):
+                if isinstance(v,LocalVariable):
+                    flag = 0x40
+                elif isinstance(v,GlobalVariable):
+                    flag = 0x60
+                if size != v.size:
+                    raise Exception("Expecting variable of size %d but got %d instead"%(size,v.size))
+                v = v.offset
+
             if -32 <= v < 32:
-                return self.p('<b', v & 0x3F)       # 6 bits
+                return self.f('<b', flag | v & 0x3F)       # 6 bits
             if -128 <= v < 128:
-                return self.p('<Bb', 0x81, v)     # 8 bits
+                return self.f('<Bb', flag | 0x81, v)        # 8 bits
             if -32768 <= v < 32768:
-                return self.p('<Bh', 0x82, v)     # 16 bits
+                return self.f('<Bh', flag | 0x82, v)        # 16 bits
             else:
-                return self.p('<Bi', 0x83, v)     # 32 bits
+                return self.f('<Bi', flag | 0x83, v)        # 32 bits
 
         def s(self, s):
             """

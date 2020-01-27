@@ -13,7 +13,7 @@ class Sound():
         frequency: Hz (250-10000)
         duration: milliseconds or 0, which is forever
         """
-        self.cmds.op(0x94).b(0x01).c(volume).c(frequency).c(duration)
+        self.cmds.op(0x94).b(0x01).p1(volume).p2(frequency).p2(duration)
         return self
 
     def play(self, volume:int, name:str):
@@ -23,7 +23,7 @@ class Sound():
         volume: percent (0-100)
         name: sound file name
         """
-        self.cmds.op(0x94).b(0x02).c(volume).s(name)
+        self.cmds.op(0x94).b(0x02).p1(volume).s(name)
         return self
 
     def ready(self):

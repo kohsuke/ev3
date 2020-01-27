@@ -1,3 +1,5 @@
+from .var import Variable
+
 class Output:
     """
     Output operations
@@ -25,7 +27,7 @@ class Output:
         return self
 
     def __head(self,op: int, ports, layer):
-        return self.cmds.op(op).c(self.__layer(layer)).c(self.__ports(ports))
+        return self.cmds.op(op).p1(self.__layer(layer)).p1(self.__ports(ports))
 
 
     def reset(self, ports: int = None, layer: int = None):
@@ -41,7 +43,7 @@ class Output:
 
         brake: if true, the motor actively tries to hold the stop. Otherwise it's free
         """
-        self.__head(0xA3, ports, layer).c(1 if brake else 0)
+        self.__head(0xA3, ports, layer).p1(1 if brake else 0)
         return self
 
     def power(self, power: int, ports: int = None, layer: int = None):
@@ -50,7 +52,7 @@ class Output:
 
         power: [-100,100]
         """
-        self.__head(0xA4, ports, layer).c(power)
+        self.__head(0xA4, ports, layer).p1(power)
         return self
 
     def speed(self, speed: int, ports: int = None, layer: int = None):
@@ -59,7 +61,7 @@ class Output:
 
         power: [-100,100]
         """
-        self.__head(0xA5, ports, layer).c(speed)
+        self.__head(0xA5, ports, layer).p1(speed)
         return self
 
     def start(self, ports: int = None, layer: int = None):
@@ -73,7 +75,14 @@ class Output:
         """
         Start the motors
         """
-        self.__head(0xA7, ports, layer).c(polarity)
+        self.__head(0xA7, ports, layer).p1(polarity)
+        return self
+
+    def read(self, speed: Variable, tacho: Variable, ports: int = None, layer: int = None):
+        """
+        Read the current motor speed and tacho count
+        """
+        self.__head(0xA8, ports, layer).p1(speed).p4(tacho)
         return self
 
     def ready(self, ports: int = None, layer: int = None):
@@ -106,4 +115,4 @@ class Output:
         if level == None:
             raise Exception("speed or power must be specified")
 
-        self.__head(powerOpCode if power else speedOpCode, ports, layer).c(level).c(step1).c(step2).c(step3).c(1 if brake else 0)
+        self.__head(powerOpCode if power else speedOpCode, ports, layer).p1(level).p4(step1).p4(step2).p4(step3).p1(1 if brake else 0)
