@@ -27,12 +27,14 @@ with hid.Device(0x0694,5) as h:
 
     g = Gear(Gear.BIG,Gear.TURRET)
 
-    c.output.ports(2)
+    c.output.ports(1)
     # c.output.polarity(1)
 
     # move_by_X functions seem to internally reset tacho count
     # so read is not giving me meaningful tacho count
     c.output.move_by_step( g(60), g(240), g(60), speed=20)
+    # c.output.move_by_time( 500, 1000, 500, speed=20)
+
     # c.output.ready()
     # c.output.move_by_step( g(60), g(240), g(60), speed= 20)
 
@@ -42,7 +44,7 @@ with hid.Device(0x0694,5) as h:
         c = Program()
         speed = c.globalVar(1)
         tacho = c.globalVar(4)
-        c.output.read(1, speed, tacho)
+        c.output.read(0, speed, tacho)
         # print(binascii.hexlify(c.encode()))
         c.send(h)
         print("speed:%d tacho:%d"%(speed(),tacho()))
