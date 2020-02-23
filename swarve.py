@@ -36,6 +36,13 @@ def target(j):
     # compute that target angle in degree
     return math.atan2(y, x) * 180 / math.pi
 
+# represents control parameters for different motors
+class Motor:
+    def __init__(self, layer, no, p):
+        self.layer = layer
+        self.no    = no         # motor ID in [0,3]
+        self.mask  = 1<<no      # motor bitmask
+        self.polarity = p       # polarity direction, +1 or -1
 
 pygame.init()
 pygame.joystick.init()
@@ -47,50 +54,61 @@ j.init()
 # so as to map the turrent angle to the tacho count
 g = Gear(Gear.TURRET, Gear.BIG)
 
+motors = [Motor(0,0,1), Motor(0,2,-1)]
+
 # Open EV3 as device
 with hid.Device(0x0694,5) as ev3:
     # reset tacho counts on all motors
     c = Program()
     c.output.reset(15).clear_count(15)
-    # c.output.ports(1).power(0).start()
+    for m in motors:
+        c.output.ports(m.mask).power(0).polarity(m.polarity).start()
     c.send(ev3)
     print("Initialized")
 
-    loop = 0
+    loop = 0            # loop counter, just to assist debugging
+    t = 0               # target direction
 
     # Main game loop
     while True:
         time.sleep(0.1)
         pygame.event.pump()
 
-        # read current tacho meter
+        # read the target direction from joystick
+        t = target(j) or t
+        print("l:%5d t:%+3.2f" % (loop, t), end="")
+
+        # read current tacho meter for motors
         c = Program()
-        tacho = c.globalVar(4)
-        c.output.get_count(0, tacho)
+        for m in motors:
+            m.tacho = c.globalVar(4)
+            c.output.get_count(m.no, m.tacho, layer=m.layer)
         c.send(ev3)
 
-        current = g(tacho())
 
-        t = target(j) or current
+        # determine the power level for each motor to get to the target
+        c = Program()
+        for m in motors:
+            current = g(m.tacho())*m.polarity
 
-        d = delta(t,current)
+            d = delta(t,current)
 
-        print("l:%5d t:%+3.2f c:%+3.2f d:%+3.2f" % (loop,t,current,d))
+            # convert that delta to power level
+            #  - clamp at the threshold to control the maximum
+            #  - to avoid jitter, power down motor near the target position
+            threshold = 80
+            if abs(d)>threshold:    d=math.copysign(threshold,d)
+            if abs(d)<3:            d=0
+            d = int(d)
 
-        # convert that delta to power level
-        #  - clamp at the threshold to control the maximum
-        #  - to avoid jitter, power down motor near the target position
-        threshold = 80
-        if abs(d)>threshold:    d=math.copysign(threshold,d)
-        if abs(d)<3:            d=0
-        d = int(d)
+            c.output.power(d, ports=m.mask, layer=m.layer)
+
+            print(" c:%+3.2f d:%+3.2f" % (current, d), end="")
+
 
         # apply power accordingly
-        c = Program()
-        c.output.ports(1)
-        c.output.power(d)
         c.send(ev3)
 
         loop += 1
-
+        print()
 
