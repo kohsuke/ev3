@@ -38,11 +38,12 @@ def target(j):
 
 # represents control parameters for different motors
 class Motor:
-    def __init__(self, layer, no, p):
+    def __init__(self, layer, no, p, button):
         self.layer = layer
         self.no    = no         # motor ID in [0,3]
         self.mask  = 1<<no      # motor bitmask
         self.polarity = p       # polarity direction, +1 or -1
+        self.button = button    # digital button on the controller to nudge this motor
 
 pygame.init()
 pygame.joystick.init()
@@ -54,10 +55,9 @@ j.init()
 # so as to map the turrent angle to the tacho count
 g = Gear(Gear.TURRET, Gear.BIG)
 
-motors = [Motor(0,0,1), Motor(0,2,-1)]
+motors = [Motor(0,0,1,3), Motor(0,2,-1,2)]
 
-# Open EV3 as device
-with hid.Device(0x0694,5) as ev3:
+def reset():
     # reset tacho counts on all motors
     c = Program()
     c.output.reset(15).clear_count(15)
@@ -65,6 +65,11 @@ with hid.Device(0x0694,5) as ev3:
         c.output.ports(m.mask).power(0).polarity(m.polarity).start()
     c.send(ev3)
     print("Initialized")
+
+
+# Open EV3 as device
+with hid.Device(0x0694,5) as ev3:
+    reset()
 
     loop = 0            # loop counter, just to assist debugging
     t = 0               # target direction
@@ -75,8 +80,17 @@ with hid.Device(0x0694,5) as ev3:
         pygame.event.pump()
 
         # read the target direction from joystick
-        t = target(j) or t
-        print("l:%5d t:%+3.2f" % (loop, t), end="")
+        t = target(j)
+        print("l:%5d t:%+3.2f" % (loop, t or 0), end="")
+
+        # is any nudge button pressed?
+        nudged = False
+        for m in motors:
+            nudged = nudged or j.get_button(m.button)
+
+        # reset button
+        if j.get_button(7):
+            reset()
 
         # read current tacho meter for motors
         c = Program()
@@ -91,15 +105,24 @@ with hid.Device(0x0694,5) as ev3:
         for m in motors:
             current = g(m.tacho())*m.polarity
 
-            d = delta(t,current)
+            if t:
+                d = delta(t,current)
 
-            # convert that delta to power level
-            #  - clamp at the threshold to control the maximum
-            #  - to avoid jitter, power down motor near the target position
-            threshold = 80
-            if abs(d)>threshold:    d=math.copysign(threshold,d)
-            if abs(d)<3:            d=0
-            d = int(d)
+                # convert that delta to power level
+                #  - clamp at the threshold to control the maximum
+                #  - to avoid jitter, power down motor near the target position
+                threshold = 80
+                if abs(d)>threshold:    d=math.copysign(threshold,d)
+                if abs(d)<3:            d=0
+                d = int(d)
+
+                # if some nudge buttons are pressed, only the nudged motors should move,
+                # and all other motors should get their powers cut off
+                if nudged:
+                    d = d if j.get_button(m.button) else 0
+            else:
+                # no target given. cut all motor output
+                d = 0
 
             c.output.power(d, ports=m.mask, layer=m.layer)
 
