@@ -88,7 +88,7 @@ class Output:
         """
         Read the current motor speed and tacho count
 
-        Bware that port is [0,3]
+        Beware that port is [0,3]
         """
         self.__head(0xA8, port, layer).p1(speed).p4(tacho)
         return self
@@ -124,3 +124,17 @@ class Output:
             raise Exception("speed or power must be specified")
 
         self.__head(powerOpCode if power else speedOpCode, ports, layer).p1(level).p4(step1).p4(step2).p4(step3).p1(1 if brake else 0)
+
+    def clear_count(self, ports: int = None, layer: int = None):
+        """
+        Clears the tach count used as sensor input
+        """
+        self.__head(0xB2, ports, layer)
+        return self
+
+    def get_count(self, port: int, tacho: Variable, layer: int = None):
+        """
+        Reads tacho count as sensor input
+        """
+        self.__head(0xB3, port, layer).p4(tacho)
+        return self
