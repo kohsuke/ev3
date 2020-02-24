@@ -1,5 +1,3 @@
-# Map analog stick to a 360 direction
-# 0 is to the right
 import math
 import pygame
 import time
@@ -55,14 +53,15 @@ j.init()
 # so as to map the turrent angle to the tacho count
 g = Gear(Gear.TURRET, Gear.BIG)
 
-motors = [Motor(0,0,1,3), Motor(0,2,-1,2)]
+motors = [Motor(0,0,1,3), Motor(0,2,-1,2), Motor(1,0,1,1), Motor(1,2,-1,0)]
 
 def reset():
     # reset tacho counts on all motors
     c = Program()
-    c.output.reset(15).clear_count(15)
     for m in motors:
-        c.output.ports(m.mask).power(0).polarity(m.polarity).start()
+        c.output.layer(m.layer).ports(m.mask)
+        c.output.reset().clear_count()
+        c.output.power(0).polarity(m.polarity).start()
     c.send(ev3)
     print("Initialized")
 
@@ -81,7 +80,7 @@ with hid.Device(0x0694,5) as ev3:
 
         # read the target direction from joystick
         t = target(j)
-        print("l:%5d t:%+3.2f" % (loop, t or 0), end="")
+        print("l:%5d t:%+7.2f" % (loop, t or 0), end="")
 
         # is any nudge button pressed?
         nudged = False
@@ -96,7 +95,7 @@ with hid.Device(0x0694,5) as ev3:
         c = Program()
         for m in motors:
             m.tacho = c.globalVar(4)
-            c.output.get_count(m.no, m.tacho, layer=m.layer)
+            c.output.layer(m.layer).get_count(m.no, m.tacho)
         c.send(ev3)
 
 
@@ -124,10 +123,9 @@ with hid.Device(0x0694,5) as ev3:
                 # no target given. cut all motor output
                 d = 0
 
-            c.output.power(d, ports=m.mask, layer=m.layer)
+            c.output.ports(m.mask).layer(m.layer).power(d)
 
-            print(" c:%+3.2f d:%+3.2f" % (current, d), end="")
-
+            print(" c:%+7.2f d:%+7.2f" % (current, d), end="")
 
         # apply power accordingly
         c.send(ev3)
