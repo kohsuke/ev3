@@ -53,14 +53,19 @@ j.init()
 # so as to map the turrent angle to the tacho count
 g = Gear(Gear.TURRET, Gear.BIG)
 
-motors = [Motor(0,0,1,3), Motor(0,2,-1,2), Motor(1,0,1,1), Motor(1,2,-1,0)]
+motors  = [Motor(0,0,1,3), Motor(0,1,-1,2), Motor(0,2,1,1), Motor(0,3,-1,0)]
+thrusts = [Motor(1,0,1,3), Motor(1,1,-1,2), Motor(1,2,1,1), Motor(1,3,-1,0)]
 
 def reset():
-    # reset tacho counts on all motors
     c = Program()
+    # reset tacho counts on all motors
     for m in motors:
         c.output.layer(m.layer).ports(m.mask)
         c.output.reset().clear_count()
+        c.output.power(0).polarity(m.polarity).start()
+    # activate thrust motors
+    for m in thrusts:
+        c.output.layer(m.layer).ports(m.mask)
         c.output.power(0).polarity(m.polarity).start()
     c.send(ev3)
     print("Initialized")
@@ -87,8 +92,8 @@ with hid.Device(0x0694,5) as ev3:
         for m in motors:
             nudged = nudged or j.get_button(m.button)
 
-        # reset button
-        if j.get_button(7):
+        # reset button - "option"
+        if j.get_button(9):
             reset()
 
         # read current tacho meter for motors
@@ -127,8 +132,18 @@ with hid.Device(0x0694,5) as ev3:
 
             print(" c:%+7.2f d:%+7.2f" % (current, d), end="")
 
+        # compute thrust
+        t = j.get_axis(4)*100
+        if abs(t)<3:            t=0         # avoid jitter
+        t=int(t)
+        print(" t:%+7.2f" % (t), end="")
+        for m in thrusts:
+            c.output.power(t,ports=m.mask,layer=m.layer)
+
         # apply power accordingly
         c.send(ev3)
+
+
 
         loop += 1
         print()
