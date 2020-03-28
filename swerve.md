@@ -1,4 +1,4 @@
-# Swarve drive test kit
+# Swerve drive test kit
 
 * Use left analog stick to control the direction of the robot
 * Press one of the four digital buttons (square, triangle, circle, and cross)
